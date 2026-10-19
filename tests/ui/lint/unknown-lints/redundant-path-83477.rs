@@ -4,11 +4,11 @@
 
 #[allow(rustc::foo::bar::default_hash_types)]
 //~^ WARN unknown lint: `rustc::foo::bar::default_hash_types`
-//~| HELP did you mean
+//~| HELP a lint with a similar name exists in `rustc` lints
 //~| SUGGESTION rustc::default_hash_types
 #[allow(rustc::foo::default_hash_types)]
 //~^ WARN unknown lint: `rustc::foo::default_hash_types`
-//~| HELP did you mean
+//~| HELP a lint with a similar name exists in `rustc` lints
 //~| SUGGESTION rustc::default_hash_types
 fn main() {
     let _ = std::collections::HashMap::<String, String>::new();
