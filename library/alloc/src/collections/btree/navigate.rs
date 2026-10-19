@@ -6,6 +6,85 @@ use super::node::ForceResult::*;
 use super::node::{Handle, NodeRef, marker};
 use super::search::SearchBound;
 use crate::alloc::AllocatorClone;
+
+// Unlike LazyLeafRange, this cursor retains each individual ascent and descent.
+// Admission is called before reading or changing the current node handle.
+pub(super) struct SteppedRange<'a, K, V> {
+    phase: SteppedPhase<'a, K, V>,
+}
+
+enum SteppedPhase<'a, K, V> {
+    Descend(NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>),
+    Edge(Handle<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>, marker::Edge>),
+    Ascend(NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>),
+    Yield(Handle<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>, marker::KV>),
+    AfterYield(Handle<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>, marker::KV>),
+    Complete,
+    Finished,
+}
+
+pub(super) enum SteppedItem<'a, K, V> {
+    Progress,
+    Entry(&'a K, &'a V),
+    Complete,
+    Finished,
+}
+
+impl<'a, K, V> SteppedRange<'a, K, V> {
+    pub(super) fn new(
+        root: Option<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>>,
+    ) -> Self {
+        Self { phase: root.map_or(SteppedPhase::Complete, SteppedPhase::Descend) }
+    }
+
+    pub(super) fn step<E>(
+        &mut self,
+        admit: impl FnOnce() -> Result<(), E>,
+    ) -> Result<SteppedItem<'a, K, V>, E> {
+        if matches!(self.phase, SteppedPhase::Finished) {
+            return Ok(SteppedItem::Finished);
+        }
+        admit()?;
+        match &self.phase {
+            SteppedPhase::Descend(node) => {
+                self.phase = match (*node).force() {
+                    Leaf(leaf) => SteppedPhase::Edge(leaf.first_edge().forget_node_type()),
+                    Internal(node) => SteppedPhase::Descend(node.first_edge().descend()),
+                };
+            }
+            SteppedPhase::Edge(edge) => {
+                self.phase = match (*edge).right_kv() {
+                    Ok(kv) => SteppedPhase::Yield(kv),
+                    Err(edge) => SteppedPhase::Ascend(edge.into_node()),
+                };
+            }
+            SteppedPhase::Ascend(node) => {
+                self.phase = match (*node).ascend() {
+                    Ok(edge) => SteppedPhase::Edge(edge.forget_node_type()),
+                    Err(_) => SteppedPhase::Complete,
+                };
+            }
+            SteppedPhase::Yield(kv) => {
+                let kv = *kv;
+                let (key, value) = kv.into_kv();
+                self.phase = SteppedPhase::AfterYield(kv);
+                return Ok(SteppedItem::Entry(key, value));
+            }
+            SteppedPhase::AfterYield(kv) => {
+                self.phase = match (*kv).force() {
+                    Leaf(kv) => SteppedPhase::Edge(kv.right_edge().forget_node_type()),
+                    Internal(kv) => SteppedPhase::Descend(kv.right_edge().descend()),
+                };
+            }
+            SteppedPhase::Complete => {
+                self.phase = SteppedPhase::Finished;
+                return Ok(SteppedItem::Complete);
+            }
+            SteppedPhase::Finished => unreachable!(),
+        }
+        Ok(SteppedItem::Progress)
+    }
+}
 // `front` and `back` are always both `None` or both `Some`.
 pub(super) struct LeafRange<BorrowType, K, V> {
     front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,

@@ -21,6 +21,10 @@ use crate::alloc::{AllocatorClone, Global};
 use crate::vec::Vec;
 
 mod entry;
+mod stepped;
+
+#[unstable(feature = "btree_stepped_cursor", issue = "none")]
+pub use stepped::{SteppedCursor, SteppedCursorStep};
 
 use Entry::*;
 #[stable(feature = "rust1", since = "1.0.0")]

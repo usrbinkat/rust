@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+mod buckets;
+
 use hashbrown::hash_map::{self as base, RustcOccupiedError};
 
 use self::Entry::*;

@@ -12,7 +12,8 @@ members = [
 exclude = [
   # stdarch has its own Cargo workspace
   "stdarch",
-  "windows_link"
+  "windows_link",
+  "vendor/hashbrown"
 ]
 
 [profile.release.package.compiler_builtins]
