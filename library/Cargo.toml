@@ -13,7 +13,10 @@ exclude = [
   # stdarch has its own Cargo workspace
   "stdarch",
   "windows_link",
-  "vendor/hashbrown"
+  # Forked hashbrown, a path dependency of std. Kept outside `vendor/`: the
+  # rust-src component vendors crates.io there as a checksummed directory
+  # source (`library/.cargo/config.toml`).
+  "hashbrown"
 ]
 
 [profile.release.package.compiler_builtins]
