@@ -1,5 +1,6 @@
 use super::HashMap;
 use crate::alloc::Allocator;
+use crate::hash::{BuildHasher, Hash};
 
 impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// Returns the number of physical bucket indices, including vacant and
@@ -18,7 +19,15 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     pub fn get_bucket(&self, index: usize) -> Option<(&K, &V)> {
         self.base.get_bucket(index)
     }
+}
 
+// hashbrown declares `HashMap::allocation_size` under these bounds; the
+// forwarding method keeps the same shape.
+impl<K, V, S, A: Allocator> HashMap<K, V, S, A>
+where
+    K: Eq + Hash,
+    S: BuildHasher,
+{
     /// Returns the backing table's allocation size, including control bytes.
     /// This measures requested allocation space, not allocator overhead.
     #[unstable(feature = "hashmap_bucket_access", issue = "none")]

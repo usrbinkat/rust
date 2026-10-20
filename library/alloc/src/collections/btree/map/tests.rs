@@ -2820,3 +2820,57 @@ fn test_id_based_merge() {
     assert_eq!(merged_kv_pair.0.id, 0);
     assert_eq!(merged_kv_pair.0.name, "lhs_k".to_string());
 }
+
+#[test]
+fn test_stepped_cursor_refusal_preserves_every_transition() {
+    for count in [0, 1, 11, 12, 128, 4096] {
+        let mut map = BTreeMap::new();
+        for key in (0..count).rev() {
+            map.insert(key, key * 7 + 3);
+        }
+        let mut cursor = map.stepped_cursor();
+        let mut reference = map.stepped_cursor();
+        let mut yielded = 0;
+        let mut completed = false;
+        // Three transitions per entry and at most four more per node;
+        // the tree has at most n+1 nodes, including an empty root.
+        for _ in 0..8 * (count + 1) {
+            for _ in 0..2 {
+                let mut called = false;
+                assert_eq!(
+                    cursor.step(|| {
+                        called = true;
+                        Err(17)
+                    }),
+                    Err(17)
+                );
+                assert!(called);
+            }
+            let mut admissions = 0;
+            let actual = cursor
+                .step(|| {
+                    admissions += 1;
+                    Ok::<_, ()>(())
+                })
+                .unwrap();
+            assert_eq!(admissions, 1);
+            assert_eq!(actual, reference.step(|| Ok::<_, ()>(())).unwrap());
+            match actual {
+                SteppedCursorStep::Entry(key, value) => {
+                    assert_eq!(*key, yielded);
+                    assert_eq!(*value, yielded * 7 + 3);
+                    yielded += 1;
+                }
+                SteppedCursorStep::Complete => {
+                    completed = true;
+                    break;
+                }
+                SteppedCursorStep::Progress => {}
+                SteppedCursorStep::Finished => panic!("premature finished"),
+            }
+        }
+        assert!(completed);
+        assert_eq!(yielded, count);
+        assert_eq!(cursor.step(|| Err::<(), _>(17)), Ok(SteppedCursorStep::Finished));
+    }
+}

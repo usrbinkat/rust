@@ -11,7 +11,7 @@ use core::ptr;
 
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
-use super::navigate::{LazyLeafRange, LeafRange};
+use super::navigate::{LazyLeafRange, LeafRange, SteppedItem, SteppedRange};
 use super::node::ForceResult::*;
 use super::node::{self, Handle, NodeRef, Root, marker};
 use super::search::SearchBound;
@@ -21,10 +21,6 @@ use crate::alloc::{AllocatorClone, Global};
 use crate::vec::Vec;
 
 mod entry;
-mod stepped;
-
-#[unstable(feature = "btree_stepped_cursor", issue = "none")]
-pub use stepped::{SteppedCursor, SteppedCursorStep};
 
 use Entry::*;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3114,6 +3110,93 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
                 alloc: &mut *self.alloc,
             },
         }
+    }
+
+    /// Returns a [`SteppedCursor`] positioned before the first entry.
+    ///
+    /// Creation neither descends the tree nor allocates. Each successful
+    /// [`SteppedCursor::step`] performs at most one descent, ascent, edge
+    /// transition, entry yield or terminal transition, after its admission
+    /// callback has returned `Ok`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_stepped_cursor)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::SteppedCursorStep;
+    ///
+    /// let map = BTreeMap::from([(2, "b"), (1, "a")]);
+    /// let mut cursor = map.stepped_cursor();
+    /// let mut entries = Vec::new();
+    /// loop {
+    ///     match cursor.step(|| Ok::<(), ()>(())).unwrap() {
+    ///         SteppedCursorStep::Entry(key, value) => entries.push((*key, *value)),
+    ///         SteppedCursorStep::Progress => {}
+    ///         SteppedCursorStep::Complete | SteppedCursorStep::Finished => break,
+    ///     }
+    /// }
+    /// assert_eq!(entries, [(1, "a"), (2, "b")]);
+    /// ```
+    #[unstable(feature = "btree_stepped_cursor", issue = "none")]
+    pub fn stepped_cursor(&self) -> SteppedCursor<'_, K, V> {
+        SteppedCursor { range: SteppedRange::new(self.root.as_ref().map(|root| root.reborrow())) }
+    }
+}
+
+/// A forward traversal of a `BTreeMap` retaining individual tree transitions.
+///
+/// Creation does not descend the tree or allocate. Each call to
+/// [`SteppedCursor::step`] performs at most one transition, even when
+/// admission always succeeds. Dropping the cursor neither walks nor destroys
+/// the map.
+///
+/// A `SteppedCursor` is created with the [`BTreeMap::stepped_cursor`] method.
+#[must_use]
+#[unstable(feature = "btree_stepped_cursor", issue = "none")]
+pub struct SteppedCursor<'a, K: 'a, V: 'a> {
+    range: SteppedRange<'a, K, V>,
+}
+
+/// The result of one admitted [`SteppedCursor`] transition.
+#[derive(Debug, PartialEq, Eq)]
+#[unstable(feature = "btree_stepped_cursor", issue = "none")]
+pub enum SteppedCursorStep<'a, K, V> {
+    /// A descent, ascent, or edge transition was retained.
+    Progress,
+    /// One entry was yielded, in ascending key order.
+    Entry(&'a K, &'a V),
+    /// The terminal transition was admitted.
+    Complete,
+    /// The terminal transition had already completed.
+    Finished,
+}
+
+impl<'a, K: 'a, V: 'a> SteppedCursor<'a, K, V> {
+    /// Admits and performs one transition. An admission error leaves the
+    /// cursor unchanged. Admission is called exactly once, except after
+    /// completion, when `Finished` is returned without calling it.
+    ///
+    /// The callback's own execution cost is the caller's responsibility.
+    #[unstable(feature = "btree_stepped_cursor", issue = "none")]
+    pub fn step<E>(
+        &mut self,
+        admit: impl FnOnce() -> Result<(), E>,
+    ) -> Result<SteppedCursorStep<'a, K, V>, E> {
+        Ok(match self.range.step(admit)? {
+            SteppedItem::Progress => SteppedCursorStep::Progress,
+            SteppedItem::Entry(key, value) => SteppedCursorStep::Entry(key, value),
+            SteppedItem::Complete => SteppedCursorStep::Complete,
+            SteppedItem::Finished => SteppedCursorStep::Finished,
+        })
+    }
+}
+
+#[unstable(feature = "btree_stepped_cursor", issue = "none")]
+impl<K, V> Debug for SteppedCursor<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("SteppedCursor")
     }
 }
 

@@ -30,7 +30,7 @@ pub(super) enum SteppedItem<'a, K, V> {
     Finished,
 }
 
-impl<'a, K, V> SteppedRange<'a, K, V> {
+impl<'a, K: 'a, V: 'a> SteppedRange<'a, K, V> {
     pub(super) fn new(
         root: Option<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>>,
     ) -> Self {
