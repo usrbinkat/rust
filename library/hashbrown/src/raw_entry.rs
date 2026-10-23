@@ -1,7 +1,7 @@
-use crate::alloc::{Allocator, Global};
-use crate::map::{equivalent, make_hash, make_hasher, HashMap};
-use crate::raw::{Bucket, RawTable};
 use crate::Equivalent;
+use crate::alloc::{Allocator, Global};
+use crate::map::{HashMap, equivalent, make_hash, make_hasher};
+use crate::raw::{Bucket, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
 use core::mem;

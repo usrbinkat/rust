@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub(crate) use self::inner::AllocError;
-pub(crate) use self::inner::{do_alloc, Allocator, Global};
+pub(crate) use self::inner::{Allocator, Global, do_alloc};
 
 // Nightly-case.
 // Use unstable `allocator_api` feature.

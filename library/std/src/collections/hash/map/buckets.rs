@@ -19,6 +19,18 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     pub fn get_bucket(&self, index: usize) -> Option<(&K, &V)> {
         self.base.get_bucket(index)
     }
+
+    /// Returns the least occupied bucket index in `start..end`, `end` taken
+    /// as at most [`Self::num_buckets`], or `None` when every bucket of the
+    /// range is vacant or deleted: the index the per-index scan
+    /// `(start..end).find(|&i| self.get_bucket(i).is_some())` returns, found
+    /// by loading the range's control bytes a group at a time. Inspects no
+    /// bucket's element.
+    #[unstable(feature = "hashmap_bucket_access", issue = "none")]
+    #[inline]
+    pub fn next_full_bucket(&self, start: usize, end: usize) -> Option<usize> {
+        self.base.next_full_bucket(start, end)
+    }
 }
 
 // hashbrown declares `HashMap::allocation_size` under these bounds; the
@@ -77,5 +89,36 @@ mod tests {
         assert_eq!(found, 1);
         assert_eq!(map.get_bucket(buckets), None);
         assert_eq!(map.get_bucket(usize::MAX), None);
+    }
+
+    /// The group scan finds the occupied bucket the per-index scan finds,
+    /// from every start, to ends within a group, a 64-control window, the
+    /// table's end and past it, on a collision cluster before and after its
+    /// deletions leave deleted controls before its one remaining entry.
+    #[test]
+    fn next_full_bucket_matches_the_per_index_scan() {
+        let mut map =
+            HashMap::with_capacity_and_hasher(64, BuildHasherDefault::<Collisions>::default());
+        let capacity = map.capacity();
+        for key in 0..capacity {
+            map.insert(key, key + 1);
+        }
+        let check = |map: &HashMap<usize, usize, BuildHasherDefault<Collisions>>| {
+            let buckets = map.num_buckets();
+            for start in 0..=buckets {
+                for end in [start, start + 1, start + 15, start + 64, buckets, usize::MAX] {
+                    assert_eq!(
+                        map.next_full_bucket(start, end),
+                        (start..end.min(buckets)).find(|&i| map.get_bucket(i).is_some()),
+                        "{start}..{end} of {buckets} buckets"
+                    );
+                }
+            }
+        };
+        check(&map);
+        for key in 0..capacity - 1 {
+            map.remove(&key);
+        }
+        check(&map);
     }
 }

@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashSet`.
 
 use super::map;
-use crate::alloc::{Allocator, Global};
 use crate::HashSet;
+use crate::alloc::{Allocator, Global};
 use core::hash::{BuildHasher, Hash};
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};

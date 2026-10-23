@@ -1,13 +1,13 @@
 use core::{fmt, iter::FusedIterator, marker::PhantomData, ptr::NonNull};
 
 use crate::{
+    TryReserveError,
     alloc::{Allocator, Global},
     control::Tag,
     raw::{
         Bucket, FullBucketsIndices, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
         RawIterHashIndices, RawTable,
     },
-    TryReserveError,
 };
 
 /// Low-level hash table with explicit hashing.

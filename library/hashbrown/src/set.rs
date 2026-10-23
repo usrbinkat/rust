@@ -6,9 +6,9 @@ use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use super::map::{self, HashMap, Keys};
+use crate::DefaultHashBuilder;
 use crate::alloc::{Allocator, Global};
 use crate::raw::RawExtractIf;
-use crate::DefaultHashBuilder;
 
 // Future Optimization (FIXME!)
 // =============================
@@ -2546,8 +2546,8 @@ fn assert_covariance() {
 #[cfg(test)]
 mod test_set {
     use super::{Equivalent, HashSet};
-    use crate::map::make_hash;
     use crate::DefaultHashBuilder;
+    use crate::map::make_hash;
     use std::vec::Vec;
 
     #[test]

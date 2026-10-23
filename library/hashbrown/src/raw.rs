@@ -1,7 +1,7 @@
-use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
-use crate::scopeguard::{guard, ScopeGuard};
-use crate::util::{likely, unlikely};
 use crate::TryReserveError;
+use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
+use crate::scopeguard::{ScopeGuard, guard};
+use crate::util::{likely, unlikely};
 use core::alloc::Layout;
 use core::array;
 use core::iter::FusedIterator;
@@ -14,7 +14,7 @@ use stdalloc::alloc::handle_alloc_error;
 
 #[cfg(test)]
 use crate::alloc::AllocError;
-use crate::alloc::{do_alloc, Allocator, Global};
+use crate::alloc::{Allocator, Global, do_alloc};
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
@@ -1255,6 +1255,34 @@ impl<T, A: Allocator> RawTable<T, A> {
                 None
             }
         }
+    }
+
+    /// Returns the least index in `start..end` whose bucket is occupied, `end`
+    /// taken as at most [`Self::num_buckets`]: the index the scalar scan
+    /// `(start..end).find(|&i| self.get_bucket(i).is_some())` returns, found a
+    /// control group at a time with the group's `match_full`.
+    ///
+    /// Control bytes past `num_buckets` (the replicated trailing group, or the
+    /// empty bytes of a table smaller than a group) are loaded but never
+    /// returned: a group's lowest occupied position at or past `end` means no
+    /// occupied bucket in the rest of the range.
+    #[inline]
+    pub(crate) fn next_full_bucket(&self, start: usize, end: usize) -> Option<usize> {
+        let end = end.min(self.num_buckets());
+        let mut at = start;
+        while at < end {
+            // SAFETY: `at < self.num_buckets()`, and the table has
+            // `self.num_buckets() + Group::WIDTH` control bytes (the static
+            // empty group's `Group::WIDTH` when unallocated), so an unaligned
+            // load of `Group::WIDTH` bytes at `at` is in bounds.
+            let group = unsafe { Group::load(self.table.ctrl(at)) };
+            if let Some(bit) = group.match_full().lowest_set_bit() {
+                let index = at + bit;
+                return (index < end).then_some(index);
+            }
+            at += Group::WIDTH;
+        }
+        None
     }
 
     /// Returns a pointer to an element in the table, but only after verifying that

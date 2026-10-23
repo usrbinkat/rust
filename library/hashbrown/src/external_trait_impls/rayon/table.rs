@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashTable`.
 
 use super::raw::{RawIntoParIter, RawParDrain, RawParIter};
-use crate::alloc::{Allocator, Global};
 use crate::HashTable;
+use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::marker::PhantomData;
 use rayon::iter::plumbing::UnindexedConsumer;
@@ -211,7 +211,7 @@ mod test_par_table {
 
     use rayon::prelude::*;
 
-    use crate::{hash_map::make_hash, hash_table::HashTable, DefaultHashBuilder};
+    use crate::{DefaultHashBuilder, hash_map::make_hash, hash_table::HashTable};
 
     #[test]
     fn test_iterate() {

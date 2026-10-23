@@ -2,6 +2,7 @@
 
 use criterion::{criterion_group, criterion_main};
 
+mod bucket_scan;
 mod general_ops;
 mod insert_unique_unchecked;
 mod set_ops;
@@ -9,6 +10,7 @@ mod with_capacity;
 
 criterion_group!(
     benches,
+    bucket_scan::register_benches,
     general_ops::register_benches,
     insert_unique_unchecked::register_benches,
     set_ops::register_benches,

@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashMap`.
 
 use super::raw::{RawIntoParIter, RawParDrain, RawParIter};
-use crate::alloc::{Allocator, Global};
 use crate::HashMap;
+use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::marker::PhantomData;

@@ -116,6 +116,7 @@ pub mod hash_table {
 }
 
 pub use crate::map::HashMap;
+pub use crate::map_buckets::bucket_group_width;
 pub use crate::set::HashSet;
 pub use crate::table::HashTable;
 

@@ -5086,7 +5086,7 @@ mod test_map {
     use core::alloc::Layout;
     use core::ptr::NonNull;
     use core::sync::atomic::{AtomicI8, Ordering};
-    use rand::{rngs::SmallRng, Rng, SeedableRng};
+    use rand::{Rng, SeedableRng, rngs::SmallRng};
     use std::borrow::ToOwned;
     use std::cell::RefCell;
     use std::vec::Vec;
@@ -5954,7 +5954,7 @@ mod test_map {
     #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![expect(deprecated)] //rand
-                               // Test for #19292
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -5990,7 +5990,7 @@ mod test_map {
     #[test]
     fn test_entry_ref_take_doesnt_corrupt() {
         #![expect(deprecated)] //rand
-                               // Test for #19292
+        // Test for #19292
         fn check(m: &HashMap<std::string::String, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -6264,7 +6264,7 @@ mod test_map {
     #[test]
     fn test_replace_entry_with_doesnt_corrupt() {
         #![expect(deprecated)] //rand
-                               // Test for #19292
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -6922,7 +6922,7 @@ mod test_map_with_mmap_allocations {
     use super::HashMap;
     use crate::raw::prev_pow2;
     use core::alloc::Layout;
-    use core::ptr::{null_mut, NonNull};
+    use core::ptr::{NonNull, null_mut};
 
     #[cfg(feature = "nightly")]
     use core::alloc::{AllocError, Allocator};
